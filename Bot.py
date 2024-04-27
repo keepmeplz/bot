@@ -1,7 +1,7 @@
 import telebot
 from telebot import types
 
-bot = telebot.TeleBot('7117322157:AAES5f0x_z5lwlGYLWEs3yCg8z3LZT4euFQ')
+bot = telebot.TeleBot('ТВОЙ ТОКЕН')
 
 # Создаем клавиатуры
 kurator = types.ReplyKeyboardMarkup(row_width=2, resize_keyboard=True)
@@ -34,7 +34,7 @@ def process_question(message):
     print (message)
     question = message.text
 # Отправляем вопрос на обработку в модель машинного обучения в другом файле
-    answer = "хуй" # asyncio.run(process_message(question))
+    answer = "хуТОР" # asyncio.run(process_message(question))
     bot.send_message(message.chat.id, answer)
 
 
@@ -50,9 +50,6 @@ def handle_yes(call):
 def handle_no(call):
     call_curator(call.message)
 
-@bot.message_handler(func=lambda message: message.text == "начнем с начала!!")
-def handle_reset(message):
-    start_message(message)
 
 @bot.message_handler(func=lambda message: message.text == "вызываю куратора!!")
 def handle_curator(message):
