@@ -1,45 +1,62 @@
 import telebot
+import os
 from telebot import types
 
-bot = telebot.TeleBot('ТВОЙ ТОКЕН')
+bot = telebot.TeleBot('')
 
-# Создаем клавиатуры
-kurator = types.ReplyKeyboardMarkup(row_width=2, resize_keyboard=True)
-kurator_table = types.KeyboardButton("вызываю куратора!!")
-question_table = types.KeyboardButton("Задать вопрос")
-kurator.add(kurator_table, question_table)
 
+
+# Папка для хранения фотографий
+PHOTO_FOLDER = 'photos'
+if not os.path.exists(PHOTO_FOLDER):
+    os.makedirs(PHOTO_FOLDER)
+# Множество для отслеживания уже сохраненных фотографий
+saved_photos = set()
 # Feedback
 say = types.InlineKeyboardMarkup()
 say_yes = types.InlineKeyboardButton("Да", callback_data="Yes")
 say_no = types.InlineKeyboardButton("Нет", callback_data="No")
 say.add(say_yes, say_no)
 
+# Начальное сообщение
 def start_message(message):
-    bot.send_message(message.chat.id, "Путник! С какой целью ты пробудил Партурнакса?",reply_markup=kurator)
-
-def call_curator(message):
-    bot.send_message(message.chat.id, "Куратор вызван!")
+    bot.send_message(message.chat.id, "Путник! С какой целью ты пробудил Партурнакса?")
 
 @bot.message_handler(commands=['start'])
 def handle_start(message):
     start_message(message)
 
-@bot.message_handler(func=lambda message: message.text == "Задать вопрос")
-def ask_question(message):
-    bot.send_message(message.chat.id, "Слушаю тебя. Введите ваш вопрос:")
-    bot.register_next_step_handler(message, process_question)
+@bot.message_handler(content_types=['photo'])
+def handle_photo(message):
+    for photo in message.photo:
+        photo = message.photo[-1]  # сохраняем последнюю (наибольшую по размеру) фотографию
 
+        if photo.file_id not in saved_photos:  # Проверяем, не сохраняли ли уже эту фотографию
+            file_info = bot.get_file(photo.file_id)
+            downloaded_file = bot.download_file(file_info.file_path)
+            file_name = os.path.join(PHOTO_FOLDER, f"{photo.file_id}.jpg")
+            with open(file_name, 'wb') as new_file:
+                new_file.write(downloaded_file)
+            saved_photos.add(photo.file_id)  # Добавляем идентификатор в множество сохраненных фотографий
+    bot.reply_to(message, 'Фотографии сохранены.')
+
+
+@bot.message_handler(content_types=['document'])
+def handle_file(message):
+    file_info = bot.get_file(message.document.file_id)
+    downloaded_file = bot.download_file(file_info.file_path)
+    save_path = 'file' + message.document.file_name  # сохраняем файл с его исходным именем
+    with open(save_path, 'wb') as new_file:
+        new_file.write(downloaded_file)
+    bot.reply_to(message, 'Файл сохранен.')
+
+@bot.message_handler(commands=['хуй'])
 def process_question(message):
-    print (message)
-    question = message.text
-# Отправляем вопрос на обработку в модель машинного обучения в другом файле
-    answer = "хуТОР" # asyncio.run(process_message(question))
-    bot.send_message(message.chat.id, answer)
-
-
-
-# Спросим пользователя, понравился ли ответ
+    # Отправка фотографии через бота
+    photo_path = "C:/Users/Nikita/Downloads/Pcjq0zg1FI8.jpg"  # Замените на корректный путь к фотографии
+    with open(photo_path, 'rb') as photo:
+        bot.send_photo(message.chat.id, photo)
+    # Спросим пользователя, понравился ли ответ
     bot.send_message(message.chat.id, "Понравился ли вам ответ?", reply_markup=say)
 
 @bot.callback_query_handler(func=lambda call: call.data == "Yes")
@@ -48,15 +65,10 @@ def handle_yes(call):
 
 @bot.callback_query_handler(func=lambda call: call.data == "No")
 def handle_no(call):
-    call_curator(call.message)
-
-
-@bot.message_handler(func=lambda message: message.text == "вызываю куратора!!")
-def handle_curator(message):
-    call_curator(message)
+    bot.send_message(call.message.chat.id, "Жаль, что вам не понравилось.")
 
 @bot.message_handler(func=lambda message: True)
 def handle_communication(message):
     bot.send_message(message.chat.id, "Реализация бота для общения...")
 
-bot.polling()
+bot.polling(none_stop=True)
